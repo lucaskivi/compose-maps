@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.composemaps.ui.search.SearchScreen
 
 sealed class Destinations {
     abstract val key: String
@@ -20,6 +21,7 @@ fun ScreenDispatcher() {
 
     NavHost(navController = navController, startDestination = Destinations.Search.key) {
         composable(route = Destinations.Search.key) {
+            SearchScreen()
         }
     }
 }
