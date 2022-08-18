@@ -19,7 +19,7 @@ class SearchViewModel @Inject constructor(
      * A flow that is the source of truth for screen state.
      */
     private val mutableSearchScreenState: MutableStateFlow<SearchScreenState> = MutableStateFlow(
-        SearchScreenState.FullMap { onClickVisibilityButton() }
+        SearchScreenState.FullMap
     )
 
     /**
@@ -37,31 +37,31 @@ class SearchViewModel @Inject constructor(
     }
 
     fun fabClicked() {
-        mutableSearchScreenState.value = when (mutableSearchScreenState.value) {
-            is SearchScreenState.FullMap -> SearchScreenState.HalfMap { onClickVisibilityButton() }
+        mutableSearchScreenState.value = when (val current = mutableSearchScreenState.value) {
+            is SearchScreenState.FullerList -> current.convertToHalfMap()
+            is SearchScreenState.FullMap -> current.convertToHalfMap()
             is SearchScreenState.HalfMap -> throw FAB_EXCEPTION
-            SearchScreenState.FullList -> SearchScreenState.HalfMap { onClickVisibilityButton() }
+            SearchScreenState.FullList -> current.convertToHalfMap()
         }
     }
 
-    private fun onClickVisibilityButton() {
-        mutableSearchScreenState.value = when (mutableSearchScreenState.value) {
-            SearchScreenState.FullList -> throw EXCEPTION
-            is SearchScreenState.HalfMap -> SearchScreenState.FullMap { onClickVisibilityButton() }
-            is SearchScreenState.FullMap -> SearchScreenState.HalfMap { onClickVisibilityButton() }
-        }
-    }
 
     fun onDragToNewState(bottomSheetState: BottomSheetState) {
+        if (bottomSheetState == mutableSearchScreenState.value.bottomSheetState) return
         mutableSearchScreenState.value = when (bottomSheetState) {
+            BottomSheetState.Fuller -> SearchScreenState.FullerList
             BottomSheetState.Full -> SearchScreenState.FullList
-            BottomSheetState.Half -> SearchScreenState.HalfMap { onClickVisibilityButton() }
-            BottomSheetState.Gone -> SearchScreenState.FullMap { onClickVisibilityButton() }
+            BottomSheetState.Half -> mutableSearchScreenState.value.convertToHalfMap()
+            BottomSheetState.Gone -> SearchScreenState.FullMap
         }
     }
 
+    private fun SearchScreenState.convertToHalfMap() = SearchScreenState.HalfMap(
+        iconRes =  this.searchFabState.iconRes,
+        textRes =  this.searchFabState.textRes,
+    )
+
     companion object {
-        private val EXCEPTION = IllegalStateException("There is no visibility button in the FullList state")
         private val FAB_EXCEPTION = IllegalStateException("There is no FAB in the HalfMap state")
     }
 }

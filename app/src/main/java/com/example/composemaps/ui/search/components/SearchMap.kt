@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -25,30 +26,27 @@ fun SearchMap(
     paddingValues: PaddingValues,
     searchMapContent: SearchMapContent,
 ) {
-    val modifier = Modifier.fillMaxSize()
+    val modifier = Modifier
+        .padding(paddingValues)
+        .fillMaxSize()
     when (searchMapContent.data) {
         is SearchMapData.Loaded -> {
-            // val highlightedMarker = searchMapContent.data.markers.firstOrNull { it.isHighlighted }
-            // val startingPosition = highlightedMarker?.latLng ?: DEFAULT_START_POSITION
-            // val cameraPositionState = rememberCameraPositionState {
-            //     position = CameraPosition.fromLatLngZoom(startingPosition, searchMapContent.data.zoom)
-            // }
-            Spacer(modifier = modifier
-                .background(Color.Cyan)
-                .clickable { Log.d("DAVID", "Map clicked") }
-            )
-            // GoogleMap(
-            //     cameraPositionState = cameraPositionState,
-            //     modifier = modifier,
-            // ) {
-            //     searchMapContent.data.markers.map {
-            //         Log.d("DAVID", "made one")
-            //         Marker(
-            //             state = MarkerState(position = it.latLng),
-            //             title = it.title,
-            //         )
-            //     }
-            // }
+            val highlightedMarker = searchMapContent.data.markers.firstOrNull { it.isHighlighted }
+            val startingPosition = highlightedMarker?.latLng ?: DEFAULT_START_POSITION
+            val cameraPositionState = rememberCameraPositionState {
+                position = CameraPosition.fromLatLngZoom(startingPosition, searchMapContent.data.zoom)
+            }
+            GoogleMap(
+                cameraPositionState = cameraPositionState,
+                modifier = modifier,
+            ) {
+                searchMapContent.data.markers.map {
+                    Marker(
+                        state = MarkerState(position = it.latLng),
+                        title = it.title,
+                    )
+                }
+            }
         }
         else -> {
             CircularProgressIndicator(

@@ -1,11 +1,11 @@
 package com.example.composemaps.ui.search.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Divider
@@ -16,39 +16,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
-@Composable
-fun SearchList(
+fun LazyListScope.searchListItems(
     searchListContent: SearchListContent,
-    modifier: Modifier,
-) {
-        List(
-            searchListContent = searchListContent,
-            modifier = modifier
-        )
-}
-
-@Composable
-fun List(
-    searchListContent: SearchListContent,
-    modifier: Modifier,
 ) {
     when (searchListContent.data) {
         is SearchListData.Loaded -> {
-            LazyColumn(
-                modifier = modifier.background(color = Color.White),
-            ) {
-                itemsIndexed(searchListContent.data.listRowData) { index, item ->
-                    SearchListRow(
-                        displayDivider = index == searchListContent.data.listRowData.size,
-                        searchListRowData = item,
-                    )
-                }
+            itemsIndexed(searchListContent.data.listRowData) { index, item ->
+                SearchListRow(
+                    displayDivider = index == searchListContent.data.listRowData.size,
+                    searchListRowData = item,
+                )
             }
         }
         else -> {
-            Row(
-                modifier.background(color = Color.White),
-            ) {
+            item {
                 CircularProgressIndicator()
             }
         }
@@ -65,12 +46,14 @@ fun SearchListRow(
         modifier = Modifier
             .background(color = Color.White)
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .clickable { },
     ) {
         Text(
             text = searchListRowData.title,
             color = Color.Black,
-            modifier = Modifier.background(color = searchListRowData.backgroundColor),
+            modifier = Modifier
+                .background(color = searchListRowData.backgroundColor)
+                .padding(vertical = 16.dp),
         )
         Divider(
             color = Color.Gray,
@@ -83,7 +66,6 @@ fun SearchListRow(
 data class SearchListContent(
     val data: SearchListData,
     val bottomSheetState: BottomSheetState,
-    val listTopBarState: ListTopBarState,
 )
 
 sealed class SearchListData {

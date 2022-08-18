@@ -1,49 +1,50 @@
 package com.example.composemaps.ui.search
 
-import android.util.Log
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.FabPosition
-import androidx.compose.material.FractionalThreshold
 import androidx.compose.material.Scaffold
 import androidx.compose.material.Text
-import androidx.compose.material.rememberSwipeableState
-import androidx.compose.material.swipeable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.composemaps.R
-import com.example.composemaps.ui.search.components.AnchoredBottomSheet
-import com.example.composemaps.ui.search.components.BottomSheetHeader
 import com.example.composemaps.ui.search.components.BottomSheetState
-import com.example.composemaps.ui.search.components.ListTopBarState
-import com.example.composemaps.ui.search.components.SearchFloatingActionButton
-import com.example.composemaps.ui.search.components.SearchList
+import com.example.composemaps.ui.search.components.SearchFab
+import com.example.composemaps.ui.search.components.SearchFabState
 import com.example.composemaps.ui.search.components.SearchListContent
 import com.example.composemaps.ui.search.components.SearchListData
 import com.example.composemaps.ui.search.components.SearchMap
 import com.example.composemaps.ui.search.components.SearchMapContent
 import com.example.composemaps.ui.search.components.SearchMapData
-import kotlin.math.roundToInt
+import com.example.composemaps.ui.search.components.TripleAnchoredSheet
+import com.example.composemaps.ui.search.components.searchListItems
+
+private val SubheaderHeightDp = 56.dp
+private val BottomSheetBarHeightDp = 40.dp
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -51,75 +52,138 @@ fun SearchScreen(
     viewModel: SearchViewModel = hiltViewModel()
 ) {
     val searchScreenContent by viewModel.searchScreenContent.collectAsState(initial = SearchScreenContent.DEFAULT)
+    val mutableSubheaderHeight = remember { mutableStateOf(searchScreenContent.searchScreenState.subHeaderHeightDp) }
 
     Scaffold(
         floatingActionButton = {
-            if (searchScreenContent.searchScreenState !is SearchScreenState.HalfMap) {
-                SearchFloatingActionButton(
-                    textRes = searchScreenContent.searchScreenState.fabText,
-                    iconRes = searchScreenContent.searchScreenState.iconRes,
-                    onClick = viewModel::fabClicked,
-                )
-            }
+            SearchFab(
+                searchFabState = searchScreenContent.searchScreenState.searchFabState,
+                onClick = viewModel::fabClicked,
+            )
         },
         floatingActionButtonPosition = FabPosition.End,
         modifier = Modifier.fillMaxSize(),
     ) { paddingValues ->
-        BoxWithConstraints(
-            contentAlignment = Alignment.BottomCenter,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-        ) {
-            val maxHeight = with(LocalDensity.current) {
-                this@BoxWithConstraints.maxHeight.toPx()
-            }
-            SearchMap(
-                paddingValues = paddingValues,
-                searchMapContent = SearchMapContent(
-                    data = searchScreenContent.mapData,
-                )
+
+        Column {
+            SearchHeader(
+                subHeaderHeight = mutableSubheaderHeight.value,
             )
-            AnchoredBottomSheet(
-                state = searchScreenContent.searchScreenState.bottomSheetState,
-                dragToNewStateCallback = viewModel::onDragToNewState,
-                maxHeight = maxHeight,
+            Spacer(
+                Modifier
+                    .fillMaxWidth()
+                    .height(SubheaderHeightDp - mutableSubheaderHeight.value)
+            )
+            BoxWithConstraints(
+                contentAlignment = Alignment.TopCenter,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
             ) {
-                BottomSheetHeader(
-                    listTopBarState = searchScreenContent.searchScreenState.listTopBarState,
+                val currentMaxHeightDp = this@BoxWithConstraints.maxHeight
+                val maxHeightWithFullSubheader = remember {
+                    currentMaxHeightDp + SubheaderHeightDp - searchScreenContent.searchScreenState.subHeaderHeightDp
+                }
+
+                SearchMap(
+                    paddingValues = paddingValues,
+                    searchMapContent = SearchMapContent(
+                        data = searchScreenContent.mapData,
+                    )
                 )
-                SearchList(
-                    searchListContent = SearchListContent(
-                        data = searchScreenContent.listData,
-                        bottomSheetState = searchScreenContent.searchScreenState.bottomSheetState,
-                        listTopBarState = searchScreenContent.searchScreenState.listTopBarState,
-                    ),
-                    modifier = Modifier
-                        .clickable { Log.d("DAVID", "clicked") }
-                        .fillMaxSize()
-                        .background(Color.White),
-                )
+
+                TripleAnchoredSheet(
+                    bottomSheetHeader = {
+                        BottomSheetHeader(modifier = Modifier.height(BottomSheetBarHeightDp))
+                    },
+                    bottomSheetHeaderHeightDp = BottomSheetBarHeightDp,
+                    state = searchScreenContent.searchScreenState.bottomSheetState,
+                    dragToNewStateCallback = viewModel::onDragToNewState,
+                    maxHeightWithFullSubheaderDp = maxHeightWithFullSubheader,
+                    collapsibleSubheaderDp = SubheaderHeightDp,
+                    scrollableBody = {
+                        searchListItems(
+                            searchListContent = SearchListContent(
+                                data = searchScreenContent.listData,
+                                bottomSheetState = searchScreenContent.searchScreenState.bottomSheetState,
+                            )
+                        )
+                    },
+                ) { offsetY ->
+                    mutableSubheaderHeight.value = offsetY
+                }
             }
         }
     }
 }
 
 @Composable
-fun SearchHeader() {
+fun BottomSheetHeader(
+    modifier: Modifier,
+) {
+    val roundedCornerShape = RoundedCornerShape(
+        topStart = 16.dp,
+        topEnd = 16.dp,
+    )
+    Row(
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .fillMaxWidth()
+            .background(
+                color = Color.LightGray,
+                shape = roundedCornerShape
+            )
+            .shadow(
+                elevation = 32.dp,
+                shape = roundedCornerShape,
+            ),
+    ) {
+        Spacer(
+            modifier = Modifier
+                .size(
+                    width = 60.dp,
+                    height = 6.dp
+                )
+                .background(
+                    color = Color.DarkGray,
+                    shape = RoundedCornerShape(100.dp)
+                )
+        )
+    }
+}
+
+@Composable
+fun SearchHeader(
+    subHeaderHeight: Dp,
+) {
     Column(
         horizontalAlignment = Alignment.Start,
         modifier = Modifier
+            .zIndex(3f)
+            .background(color = Color.Gray)
             .wrapContentHeight()
+            .fillMaxWidth()
             .padding(start = 16.dp)
     ) {
-        Text(
-            text = "Compose Map",
-            fontSize = 32.sp,
-        )
-        Text(
-            text = "Using google maps.",
-            fontSize = 16.sp,
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.height(96.dp),
+        ) {
+            Text(
+                text = "Compose Map",
+                fontSize = 32.sp,
+            )
+        }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.height(subHeaderHeight),
+        ) {
+            Text(
+                text = "Using google maps.",
+                fontSize = 16.sp,
+            )
+        }
     }
 }
 
@@ -135,9 +199,7 @@ data class SearchScreenContent(
         val DEFAULT = SearchScreenContent(
             listData = SearchListData.Loading,
             mapData = SearchMapData.Loading,
-            searchScreenState = SearchScreenState.FullMap(
-                onVisibilityButtonClick = {},
-            ),
+            searchScreenState = SearchScreenState.FullMap
         )
     }
 }
@@ -147,38 +209,55 @@ data class SearchScreenContent(
  */
 sealed class SearchScreenState {
 
-    abstract val fabText: Int
-
-    abstract val iconRes: Int
-
     abstract val bottomSheetState: BottomSheetState
 
-    abstract val listTopBarState: ListTopBarState
+    abstract val searchFabState: SearchFabState
 
-    data class FullMap(
-        val onVisibilityButtonClick: () -> Unit,
-    ) : SearchScreenState() {
-        override val fabText: Int get() = R.string.search_fab_list
-        override val iconRes: Int get() = R.drawable.ic_list
+    abstract val subHeaderHeightDp: Dp
+
+    object FullMap : SearchScreenState() {
         override val bottomSheetState: BottomSheetState get() = BottomSheetState.Gone
-        override val listTopBarState: ListTopBarState get() = ListTopBarState.Hidden
+        override val searchFabState: SearchFabState
+            get() = SearchFabState(
+                iconRes = R.drawable.ic_list,
+                isVisible = true,
+                textRes = R.string.search_fab_list,
+            )
+        override val subHeaderHeightDp: Dp get() = SubheaderHeightDp
+    }
+
+    object FullerList : SearchScreenState() {
+        override val bottomSheetState: BottomSheetState get() = BottomSheetState.Fuller
+        override val searchFabState: SearchFabState
+            get() = SearchFabState(
+                iconRes = R.drawable.ic_map,
+                isVisible = true,
+                textRes = R.string.search_fab_map,
+            )
+        override val subHeaderHeightDp: Dp get() = 0.dp
     }
 
     object FullList : SearchScreenState() {
-        override val fabText: Int get() = R.string.search_fab_map
-        override val iconRes: Int get() = R.drawable.ic_map
         override val bottomSheetState: BottomSheetState get() = BottomSheetState.Full
-        override val listTopBarState: ListTopBarState get() = ListTopBarState.Hidden
+        override val searchFabState: SearchFabState
+            get() = SearchFabState(
+                iconRes = R.drawable.ic_map,
+                isVisible = true,
+                textRes = R.string.search_fab_map,
+            )
+        override val subHeaderHeightDp: Dp get() = SubheaderHeightDp
     }
 
     data class HalfMap(
-        val onVisibilityButtonClick: () -> Unit,
+        val iconRes: Int,
+        val textRes: Int,
     ) : SearchScreenState() {
         override val bottomSheetState: BottomSheetState get() = BottomSheetState.Half
-        override val fabText: Int get() = R.string.search_fab_list
-        override val iconRes: Int get() = R.drawable.ic_list
-        override val listTopBarState: ListTopBarState = ListTopBarState.Open(
-            onVisibilityButtonClick = onVisibilityButtonClick,
+        override val searchFabState: SearchFabState = SearchFabState(
+            iconRes = iconRes,
+            isVisible = false,
+            textRes = textRes,
         )
+        override val subHeaderHeightDp: Dp get() = SubheaderHeightDp
     }
 }

@@ -38,6 +38,69 @@ class LocationsDataLayerImpl @Inject constructor() : LocationsDataLayer {
             Location(
                 name = "Duluth, MN, USA",
                 latLng = LatLng(46.7867, -92.1005),
+            ),
+            Location(
+                name = "Minneapolis, MN, USA",
+                latLng = LatLng(44.9778, -93.2650),
+            ),
+            Location(
+                name = "Madison, WI, USA",
+                latLng = LatLng(43.0722, -89.4008)
+            ),
+            Location(
+                name = "New Prague, MN, USA",
+                latLng = LatLng(44.5433, -93.5761)
+            ),
+            Location(
+                name = "Duluth, MN, USA",
+                latLng = LatLng(46.7867, -92.1005),
+            ),
+            Location(
+                name = "Minneapolis, MN, USA",
+                latLng = LatLng(44.9778, -93.2650),
+            ),
+            Location(
+                name = "Madison, WI, USA",
+                latLng = LatLng(43.0722, -89.4008)
+            ),
+            Location(
+                name = "New Prague, MN, USA",
+                latLng = LatLng(44.5433, -93.5761)
+            ),
+            Location(
+                name = "Duluth, MN, USA",
+                latLng = LatLng(46.7867, -92.1005),
+            ),Location(
+                name = "Minneapolis, MN, USA",
+                latLng = LatLng(44.9778, -93.2650),
+            ),
+            Location(
+                name = "Madison, WI, USA",
+                latLng = LatLng(43.0722, -89.4008)
+            ),
+            Location(
+                name = "New Prague, MN, USA",
+                latLng = LatLng(44.5433, -93.5761)
+            ),
+            Location(
+                name = "Duluth, MN, USA",
+                latLng = LatLng(46.7867, -92.1005),
+            ),
+            Location(
+                name = "Minneapolis, MN, USA",
+                latLng = LatLng(44.9778, -93.2650),
+            ),
+            Location(
+                name = "Madison, WI, USA",
+                latLng = LatLng(43.0722, -89.4008)
+            ),
+            Location(
+                name = "New Prague, MN, USA",
+                latLng = LatLng(44.5433, -93.5761)
+            ),
+            Location(
+                name = "Duluth, MN, USA",
+                latLng = LatLng(46.7867, -92.1005),
             )
         )
     )
