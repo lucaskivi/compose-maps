@@ -2,37 +2,31 @@ package com.example.composemaps.ui.search
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.FabPosition
-import androidx.compose.material.Scaffold
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Color.Companion
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.composemaps.R
-import com.example.composemaps.ui.search.components.BottomSheetState
+import com.example.composemaps.ui.search.components.MultistageBottomSheetScaffold
+import com.example.composemaps.ui.search.components.MultistageBottomSheetState
 import com.example.composemaps.ui.search.components.SearchFab
 import com.example.composemaps.ui.search.components.SearchFabState
 import com.example.composemaps.ui.search.components.SearchListContent
@@ -40,7 +34,6 @@ import com.example.composemaps.ui.search.components.SearchListData
 import com.example.composemaps.ui.search.components.SearchMap
 import com.example.composemaps.ui.search.components.SearchMapContent
 import com.example.composemaps.ui.search.components.SearchMapData
-import com.example.composemaps.ui.search.components.TripleAnchoredSheet
 import com.example.composemaps.ui.search.components.searchListItems
 
 private val SubheaderHeightDp = 56.dp
@@ -52,68 +45,38 @@ fun SearchScreen(
     viewModel: SearchViewModel = hiltViewModel()
 ) {
     val searchScreenContent by viewModel.searchScreenContent.collectAsState(initial = SearchScreenContent.DEFAULT)
-    val mutableSubheaderHeight = remember { mutableStateOf(searchScreenContent.searchScreenState.subHeaderHeightDp) }
 
-    Scaffold(
-        floatingActionButton = {
-            SearchFab(
-                searchFabState = searchScreenContent.searchScreenState.searchFabState,
-                onClick = viewModel::fabClicked,
+    MultistageBottomSheetScaffold(
+        bottomSheetDraggedToNewStateCallback = viewModel::onDragToNewState,
+        bottomSheetHeader = { BottomSheetHeader(modifier = Modifier.height(BottomSheetBarHeightDp)) },
+        bottomSheetHeaderHeightDp = BottomSheetBarHeightDp,
+        bottomSheetScrollableContent = {
+            searchListItems(
+                searchListContent = SearchListContent(
+                    data = searchScreenContent.listData,
+                    bottomSheetState = searchScreenContent.searchScreenState.bottomSheetState,
+                )
             )
         },
-        floatingActionButtonPosition = FabPosition.End,
-        modifier = Modifier.fillMaxSize(),
-    ) { paddingValues ->
-
-        Column {
-            SearchHeader(
-                subHeaderHeight = mutableSubheaderHeight.value,
+        bottomSheetState = searchScreenContent.searchScreenState.bottomSheetState,
+        header = { SearchHeader() },
+        collapsibleSubheader = { heightDp ->
+            SearchSubheader(height = heightDp)
+        },
+        collapsibleSubheaderFullHeightDp = SubheaderHeightDp,
+        fab = {
+            SearchFab(
+                searchFabState = searchScreenContent.searchScreenState.searchFabState,
+                onClick = viewModel::fabClicked
             )
-            Spacer(
-                Modifier
-                    .fillMaxWidth()
-                    .height(SubheaderHeightDp - mutableSubheaderHeight.value)
+        },
+        fabPosition = FabPosition.End,
+    ) {
+        SearchMap(
+            searchMapContent = SearchMapContent(
+                data = searchScreenContent.mapData,
             )
-            BoxWithConstraints(
-                contentAlignment = Alignment.TopCenter,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-            ) {
-                val currentMaxHeightDp = this@BoxWithConstraints.maxHeight
-                val maxHeightWithFullSubheader = remember {
-                    currentMaxHeightDp + SubheaderHeightDp - searchScreenContent.searchScreenState.subHeaderHeightDp
-                }
-
-                SearchMap(
-                    paddingValues = paddingValues,
-                    searchMapContent = SearchMapContent(
-                        data = searchScreenContent.mapData,
-                    )
-                )
-
-                TripleAnchoredSheet(
-                    bottomSheetHeader = {
-                        BottomSheetHeader(modifier = Modifier.height(BottomSheetBarHeightDp))
-                    },
-                    bottomSheetHeaderHeightDp = BottomSheetBarHeightDp,
-                    state = searchScreenContent.searchScreenState.bottomSheetState,
-                    dragToNewStateCallback = viewModel::onDragToNewState,
-                    maxHeightWithFullSubheaderDp = maxHeightWithFullSubheader,
-                    collapsibleSubheaderDp = SubheaderHeightDp,
-                    scrollableBody = {
-                        searchListItems(
-                            searchListContent = SearchListContent(
-                                data = searchScreenContent.listData,
-                                bottomSheetState = searchScreenContent.searchScreenState.bottomSheetState,
-                            )
-                        )
-                    },
-                ) { offsetY ->
-                    mutableSubheaderHeight.value = offsetY
-                }
-            }
-        }
+        )
     }
 }
 
@@ -154,36 +117,35 @@ fun BottomSheetHeader(
 }
 
 @Composable
-fun SearchHeader(
-    subHeaderHeight: Dp,
-) {
-    Column(
-        horizontalAlignment = Alignment.Start,
+fun SearchHeader() {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
-            .zIndex(3f)
-            .background(color = Color.Gray)
-            .wrapContentHeight()
+            .height(96.dp)
             .fillMaxWidth()
-            .padding(start = 16.dp)
+            .background(color = Color.Gray)
+        ,
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.height(96.dp),
-        ) {
-            Text(
-                text = "Compose Map",
-                fontSize = 32.sp,
-            )
-        }
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.height(subHeaderHeight),
-        ) {
-            Text(
-                text = "Using google maps.",
-                fontSize = 16.sp,
-            )
-        }
+        Text(
+            text = "Compose Map",
+            fontSize = 32.sp,
+        )
+    }
+}
+
+@Composable
+fun SearchSubheader(height: Dp) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .height(height)
+            .fillMaxWidth()
+            .background(color = Color.Gray),
+    ) {
+        Text(
+            text = "Using google maps.",
+            fontSize = 16.sp,
+        )
     }
 }
 
@@ -209,14 +171,14 @@ data class SearchScreenContent(
  */
 sealed class SearchScreenState {
 
-    abstract val bottomSheetState: BottomSheetState
+    abstract val bottomSheetState: MultistageBottomSheetState
 
     abstract val searchFabState: SearchFabState
 
     abstract val subHeaderHeightDp: Dp
 
     object FullMap : SearchScreenState() {
-        override val bottomSheetState: BottomSheetState get() = BottomSheetState.Gone
+        override val bottomSheetState: MultistageBottomSheetState get() = MultistageBottomSheetState.Gone
         override val searchFabState: SearchFabState
             get() = SearchFabState(
                 iconRes = R.drawable.ic_list,
@@ -227,7 +189,7 @@ sealed class SearchScreenState {
     }
 
     object FullerList : SearchScreenState() {
-        override val bottomSheetState: BottomSheetState get() = BottomSheetState.Fuller
+        override val bottomSheetState: MultistageBottomSheetState get() = MultistageBottomSheetState.Fuller
         override val searchFabState: SearchFabState
             get() = SearchFabState(
                 iconRes = R.drawable.ic_map,
@@ -238,7 +200,7 @@ sealed class SearchScreenState {
     }
 
     object FullList : SearchScreenState() {
-        override val bottomSheetState: BottomSheetState get() = BottomSheetState.Full
+        override val bottomSheetState: MultistageBottomSheetState get() = MultistageBottomSheetState.Full
         override val searchFabState: SearchFabState
             get() = SearchFabState(
                 iconRes = R.drawable.ic_map,
@@ -252,7 +214,7 @@ sealed class SearchScreenState {
         val iconRes: Int,
         val textRes: Int,
     ) : SearchScreenState() {
-        override val bottomSheetState: BottomSheetState get() = BottomSheetState.Half
+        override val bottomSheetState: MultistageBottomSheetState get() = MultistageBottomSheetState.Half
         override val searchFabState: SearchFabState = SearchFabState(
             iconRes = iconRes,
             isVisible = false,

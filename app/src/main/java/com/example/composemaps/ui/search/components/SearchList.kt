@@ -65,7 +65,7 @@ fun SearchListRow(
 
 data class SearchListContent(
     val data: SearchListData,
-    val bottomSheetState: BottomSheetState,
+    val bottomSheetState: MultistageBottomSheetState,
 )
 
 sealed class SearchListData {

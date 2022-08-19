@@ -2,7 +2,7 @@ package com.example.composemaps.ui.search
 
 import androidx.lifecycle.ViewModel
 import com.example.composemaps.data.LocationsDataLayer
-import com.example.composemaps.ui.search.components.BottomSheetState
+import com.example.composemaps.ui.search.components.MultistageBottomSheetState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -46,13 +46,13 @@ class SearchViewModel @Inject constructor(
     }
 
 
-    fun onDragToNewState(bottomSheetState: BottomSheetState) {
+    fun onDragToNewState(bottomSheetState: MultistageBottomSheetState) {
         if (bottomSheetState == mutableSearchScreenState.value.bottomSheetState) return
         mutableSearchScreenState.value = when (bottomSheetState) {
-            BottomSheetState.Fuller -> SearchScreenState.FullerList
-            BottomSheetState.Full -> SearchScreenState.FullList
-            BottomSheetState.Half -> mutableSearchScreenState.value.convertToHalfMap()
-            BottomSheetState.Gone -> SearchScreenState.FullMap
+            MultistageBottomSheetState.Fuller -> SearchScreenState.FullerList
+            MultistageBottomSheetState.Full -> SearchScreenState.FullList
+            MultistageBottomSheetState.Half -> mutableSearchScreenState.value.convertToHalfMap()
+            MultistageBottomSheetState.Gone -> SearchScreenState.FullMap
         }
     }
 

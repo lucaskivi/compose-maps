@@ -7,19 +7,13 @@ import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.requiredHeight
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.FractionalThreshold
 import androidx.compose.material.ResistanceConfig
@@ -32,9 +26,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -45,7 +37,6 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
-import androidx.compose.ui.unit.dp
 import kotlinx.parcelize.Parcelize
 import kotlin.math.roundToInt
 
@@ -56,11 +47,12 @@ import kotlin.math.roundToInt
  */
 
 
-sealed class BottomSheetState : Parcelable {
+sealed class MultistageBottomSheetState : Parcelable {
+    abstract val isCollapsibleSubheaderVisible: Boolean
     abstract val percentOffset: Float
 
     /**
-     * Get the additional additive offset that is required for the given [BottomSheetState].
+     * Get the additional additive offset that is required for the given [MultistageBottomSheetState].
      *
      *  The [LazyColumn] is the size of the parent composable. Therefore the full bottom sheet must be larger than the
      *  parent. The additional height comes from the draggable bar which is of size [bottomSheetBarPx] and the
@@ -79,7 +71,7 @@ sealed class BottomSheetState : Parcelable {
         maxHeightPx: Float,
         bottomSheetBarPx: Float,
         collapsibleSubheaderPx: Float,
-    ): Pair<Float, BottomSheetState> = this.getOffset(
+    ): Pair<Float, MultistageBottomSheetState> = this.getOffset(
         bottomSheetBarPx = bottomSheetBarPx,
         collapsibleSubheaderPx = collapsibleSubheaderPx,
         maxHeightPx = maxHeightPx,
@@ -98,7 +90,8 @@ sealed class BottomSheetState : Parcelable {
     )
 
     @Parcelize
-    object Fuller : BottomSheetState() {
+    object Fuller : MultistageBottomSheetState() {
+        override val isCollapsibleSubheaderVisible: Boolean get() = false
         override val percentOffset: Float get() = 0f
         override fun calculateAdditionalOffset(
             bottomSheetBarPx: Float,
@@ -107,7 +100,8 @@ sealed class BottomSheetState : Parcelable {
     }
 
     @Parcelize
-    object Full : BottomSheetState() {
+    object Full : MultistageBottomSheetState() {
+        override val isCollapsibleSubheaderVisible: Boolean get() = true
         override val percentOffset: Float get() = 0f
         override fun calculateAdditionalOffset(
             bottomSheetBarPx: Float,
@@ -116,7 +110,8 @@ sealed class BottomSheetState : Parcelable {
     }
 
     @Parcelize
-    object Gone : BottomSheetState() {
+    object Gone : MultistageBottomSheetState() {
+        override val isCollapsibleSubheaderVisible: Boolean get() = true
         override val percentOffset: Float get() = 1f
         override fun calculateAdditionalOffset(
             bottomSheetBarPx: Float,
@@ -125,7 +120,8 @@ sealed class BottomSheetState : Parcelable {
     }
 
     @Parcelize
-    object Half : BottomSheetState() {
+    object Half : MultistageBottomSheetState() {
+        override val isCollapsibleSubheaderVisible: Boolean get() = true
         override val percentOffset: Float get() = .5f
         override fun calculateAdditionalOffset(
             bottomSheetBarPx: Float,
@@ -138,7 +134,7 @@ sealed class BottomSheetState : Parcelable {
             bottomSheetBarPx: Float,
             collapsibleSubheaderPx: Float,
             maxHeightPx: Float,
-        ): Map<Float, BottomSheetState> = mapOf(
+        ): Map<Float, MultistageBottomSheetState> = mapOf(
             Gone.toAnchor(
                 bottomSheetBarPx = bottomSheetBarPx,
                 collapsibleSubheaderPx = collapsibleSubheaderPx,
@@ -165,13 +161,13 @@ sealed class BottomSheetState : Parcelable {
 
 @ExperimentalMaterialApi
 @Composable
-fun TripleAnchoredSheet(
+fun MultistageBottomSheet(
     bottomSheetHeader: @Composable () -> Unit,
     bottomSheetHeaderHeightDp: Dp,
-    dragToNewStateCallback: (BottomSheetState) -> Unit,
+    dragToNewStateCallback: (MultistageBottomSheetState) -> Unit,
     scrollableBody: LazyListScope.() -> Unit,
-    state: BottomSheetState,
-    collapsibleSubheaderDp: Dp,
+    state: MultistageBottomSheetState,
+    collapsibleSubheaderFullDp: Dp,
     maxHeightWithFullSubheaderDp: Dp,
     onScrollPastFull: (Dp) -> Unit,
 ) {
@@ -187,10 +183,10 @@ fun TripleAnchoredSheet(
     }
 
     // Setup required values
-    val bottomSheetMaxHeightDp = maxHeightWithFullSubheaderDp + bottomSheetHeaderHeightDp + collapsibleSubheaderDp
-    val fullOffset = BottomSheetState.Full.getOffset(
+    val bottomSheetMaxHeightDp = maxHeightWithFullSubheaderDp + bottomSheetHeaderHeightDp + collapsibleSubheaderFullDp
+    val fullOffset = MultistageBottomSheetState.Full.getOffset(
         bottomSheetBarPx = bottomSheetHeaderHeightDp.toPx(),
-        collapsibleSubheaderPx = collapsibleSubheaderDp.toPx(),
+        collapsibleSubheaderPx = collapsibleSubheaderFullDp.toPx(),
         maxHeightPx = bottomSheetMaxHeightDp.toPx(),
     )
 
@@ -201,7 +197,7 @@ fun TripleAnchoredSheet(
 
     // Setup callbacks
     OverscrollCallback(
-        collapsibleSubheaderDp = collapsibleSubheaderDp,
+        collapsibleSubheaderDp = collapsibleSubheaderFullDp,
         fullOffset = fullOffset,
         swipeableState = swipeableState,
     ) { overscrollDp ->
@@ -226,9 +222,9 @@ fun TripleAnchoredSheet(
                 thresholds = { _, _ -> FractionalThreshold(fraction = 0.5f) },
                 state = swipeableState,
                 orientation = Orientation.Vertical,
-                anchors = BottomSheetState.getAnchors(
+                anchors = MultistageBottomSheetState.getAnchors(
                     bottomSheetBarPx = bottomSheetHeaderHeightDp.toPx(),
-                    collapsibleSubheaderPx = collapsibleSubheaderDp.toPx(),
+                    collapsibleSubheaderPx = collapsibleSubheaderFullDp.toPx(),
                     maxHeightPx = bottomSheetMaxHeightDp.toPx(),
                 ),
             )
@@ -239,7 +235,7 @@ fun TripleAnchoredSheet(
             state = lazyListState,
             modifier = Modifier
                 .background(color = Color.White)
-                .requiredHeight(maxHeightWithFullSubheaderDp + collapsibleSubheaderDp)
+                .requiredHeight(maxHeightWithFullSubheaderDp + collapsibleSubheaderFullDp)
         ) {
             scrollableBody.invoke(this)
         }
@@ -249,7 +245,7 @@ fun TripleAnchoredSheet(
 @OptIn(ExperimentalMaterialApi::class)
 private class BottomSheetNestedScrollConnection(
     val lazyListState: LazyListState,
-    val swipeableState: SwipeableState<BottomSheetState>,
+    val swipeableState: SwipeableState<MultistageBottomSheetState>,
 ) : NestedScrollConnection {
 
     override fun onPreScroll(
@@ -290,13 +286,13 @@ private class BottomSheetNestedScrollConnection(
 fun TargetStateChangeCallback(
     interactionSource: InteractionSource,
     lazyListInteractionSource: InteractionSource,
-    swipeableState: SwipeableState<BottomSheetState>,
-    callback: (BottomSheetState) -> Unit,
+    swipeableState: SwipeableState<MultistageBottomSheetState>,
+    callback: (MultistageBottomSheetState) -> Unit,
 ) {
     val isBottomSheetDragged by interactionSource.collectIsDraggedAsState()
     val isLazyListDragged by lazyListInteractionSource.collectIsDraggedAsState()
 
-    Log.d("DAVID", "${swipeableState.targetValue} & ${swipeableState.currentValue}")
+    // Log.d("DAVID", "${swipeableState.targetValue} & ${swipeableState.currentValue}")
 
     if (isBottomSheetDragged.not() && isLazyListDragged.not()) {
         callback(swipeableState.targetValue)
@@ -308,7 +304,7 @@ fun TargetStateChangeCallback(
 fun OverscrollCallback(
     collapsibleSubheaderDp: Dp,
     fullOffset: Float,
-    swipeableState: SwipeableState<BottomSheetState>,
+    swipeableState: SwipeableState<MultistageBottomSheetState>,
     onOverscroll: (Dp) -> Unit,
 ) {
     val density = LocalDensity.current
