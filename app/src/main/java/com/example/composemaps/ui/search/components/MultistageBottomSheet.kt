@@ -36,8 +36,10 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.parcelize.Parcelize
 import kotlin.math.roundToInt
 
@@ -237,7 +239,6 @@ fun MultistageBottomSheet(
         LazyColumn(
             state = lazyListState,
             modifier = Modifier
-                .border(1.dp, color = Color.Red)
                 .background(color = Color.White)
                 .requiredHeight(bodyHeightDp + headerCollapseDeltaPx)
         ) {
@@ -349,4 +350,11 @@ fun Dp.toPx() = with(LocalDensity.current) {
     this@toPx.toPx()
 }
 
+@Composable
+fun TextUnit.toDp() = with(LocalDensity.current) {
+    this@toDp.toDp()
+}
+
 fun Float.toDp(density: Density) = with(density) { this@toDp.toDp() }
+
+operator fun TextUnit.minus(textUnit: TextUnit) = (this.value - textUnit.value).sp

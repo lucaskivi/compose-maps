@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.FabPosition
@@ -17,7 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
@@ -32,16 +33,33 @@ import com.example.composemaps.ui.search.components.SearchListData
 import com.example.composemaps.ui.search.components.SearchMap
 import com.example.composemaps.ui.search.components.SearchMapContent
 import com.example.composemaps.ui.search.components.SearchMapData
+import com.example.composemaps.ui.search.components.minus
 import com.example.composemaps.ui.search.components.searchListItems
+import com.example.composemaps.ui.search.components.toDp
 
-private val SubheaderHeightDp = 56.dp
 private val BottomSheetBarHeightDp = 40.dp
+
+private val HeaderCollapsedFontSizeSp = 17.sp
+private val HeaderExpandedFontSizeSp = 28.sp
+
+private val HeaderCollapsedLineHeightSp = 24.sp
+private val HeaderExpandedLineHeightSp = 36.sp
+private val HeaderLineHeightDeltaSp = HeaderExpandedLineHeightSp - HeaderCollapsedLineHeightSp
+
+private val SubheaderCollapsedBottomPaddingDp = 8.dp
+private val SubheaderExpandedBottomPaddingDp = 16.dp
+private val SubheaderBottomPaddingDelta = SubheaderExpandedBottomPaddingDp - SubheaderCollapsedBottomPaddingDp
+
+private val SubheaderCollapsedLineHeightSp = 0.sp
+private val SubheaderExpandedLineHeightSp = 19.sp
+private val SubheaderLineHeightDeltaSp = SubheaderExpandedLineHeightSp - SubheaderCollapsedLineHeightSp
 
 @Composable
 fun SearchScreen(
     viewModel: SearchViewModel = hiltViewModel()
 ) {
     val searchScreenContent by viewModel.searchScreenContent.collectAsState(initial = SearchScreenContent.DEFAULT)
+    val totalHeaderDeltaDp = SubheaderBottomPaddingDelta + SubheaderLineHeightDeltaSp.toDp() + HeaderLineHeightDeltaSp.toDp()
 
     MultistageBottomSheetScaffold(
         bottomSheetDraggedToNewStateCallback = viewModel::onDragToNewState,
@@ -57,7 +75,7 @@ fun SearchScreen(
         },
         bottomSheetState = searchScreenContent.searchScreenState.bottomSheetState,
         header = { SearchHeader(it) },
-        headerCollapseDeltaDp = SubheaderHeightDp,
+        headerCollapseDeltaDp = totalHeaderDeltaDp,
         fab = {
             SearchFab(
                 searchFabState = searchScreenContent.searchScreenState.searchFabState,
@@ -112,37 +130,67 @@ fun BottomSheetHeader(
 
 @Composable
 fun SearchHeader(
-    exansionPercentage: Float,
+    expansionPercentage: Float,
 ) {
-    val actualSubheaderHeight = lerp(
-        start = 0.dp,
-        stop = SubheaderHeightDp,
-        fraction = exansionPercentage,
+    val actualSubheaderBottomPadding = lerp(
+        start = SubheaderCollapsedBottomPaddingDp,
+        stop = SubheaderExpandedBottomPaddingDp,
+        fraction = expansionPercentage,
+    )
+    val actualSubheaderLineHeight = lerp(
+        start = SubheaderCollapsedLineHeightSp,
+        stop = SubheaderExpandedLineHeightSp,
+        fraction = expansionPercentage,
+    )
+    val actualHeaderLineHeight = lerp(
+        start = HeaderCollapsedLineHeightSp,
+        stop = HeaderExpandedLineHeightSp,
+        fraction = expansionPercentage,
+    )
+    val actualHeaderFontSize = lerp(
+        start = HeaderCollapsedFontSizeSp,
+        stop = HeaderExpandedFontSizeSp,
+        fraction = expansionPercentage,
+    )
+    val actualHeaderBackgroundColor = lerp(
+        start = Color.Gray,
+        stop = Color.LightGray,
+        fraction = expansionPercentage,
     )
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
-            .height(96.dp)
+            .background(color = actualHeaderBackgroundColor)
             .fillMaxWidth()
-            .background(color = Color.Gray)
-        ,
+            .padding(
+                end = 24.dp,
+                start = 24.dp,
+                top = 16.dp,
+            )
+            .height(actualHeaderLineHeight.toDp()),
     ) {
         Text(
             text = "Compose Map",
-            fontSize = 32.sp,
+            fontSize = actualHeaderFontSize,
         )
     }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
-            .height(actualSubheaderHeight)
+            .background(color = actualHeaderBackgroundColor)
             .fillMaxWidth()
-            .background(color = Color.Gray),
+            .padding(
+                bottom = actualSubheaderBottomPadding,
+                end = 24.dp,
+                start = 24.dp,
+                top = 8.dp,
+            )
+            .height(actualSubheaderLineHeight.toDp()),
     ) {
         Text(
             text = "Using google maps.",
-            fontSize = 16.sp,
+            fontSize = 13.sp,
         )
     }
 }
@@ -173,8 +221,6 @@ sealed class SearchScreenState {
 
     abstract val searchFabState: SearchFabState
 
-    abstract val subHeaderHeightDp: Dp
-
     object FullMap : SearchScreenState() {
         override val bottomSheetState: MultistageBottomSheetState get() = MultistageBottomSheetState.Gone
         override val searchFabState: SearchFabState
@@ -183,7 +229,6 @@ sealed class SearchScreenState {
                 isVisible = true,
                 textRes = R.string.search_fab_list,
             )
-        override val subHeaderHeightDp: Dp get() = SubheaderHeightDp
     }
 
     object FullerList : SearchScreenState() {
@@ -194,7 +239,6 @@ sealed class SearchScreenState {
                 isVisible = true,
                 textRes = R.string.search_fab_map,
             )
-        override val subHeaderHeightDp: Dp get() = 0.dp
     }
 
     object FullList : SearchScreenState() {
@@ -205,7 +249,6 @@ sealed class SearchScreenState {
                 isVisible = true,
                 textRes = R.string.search_fab_map,
             )
-        override val subHeaderHeightDp: Dp get() = SubheaderHeightDp
     }
 
     data class HalfMap(
@@ -218,6 +261,5 @@ sealed class SearchScreenState {
             isVisible = false,
             textRes = textRes,
         )
-        override val subHeaderHeightDp: Dp get() = SubheaderHeightDp
     }
 }
