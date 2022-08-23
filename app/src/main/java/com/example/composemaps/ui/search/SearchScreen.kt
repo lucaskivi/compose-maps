@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
@@ -19,7 +18,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Color.Companion
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -59,11 +57,8 @@ fun SearchScreen(
             )
         },
         bottomSheetState = searchScreenContent.searchScreenState.bottomSheetState,
-        header = { SearchHeader() },
-        collapsibleSubheader = { heightDp ->
-            SearchSubheader(height = heightDp)
-        },
-        collapsibleSubheaderFullHeightDp = SubheaderHeightDp,
+        header = { SearchHeader(it) },
+        collapsibleHeaderDelta = SubheaderHeightDp,
         fab = {
             SearchFab(
                 searchFabState = searchScreenContent.searchScreenState.searchFabState,
@@ -117,7 +112,9 @@ fun BottomSheetHeader(
 }
 
 @Composable
-fun SearchHeader() {
+fun SearchHeader(
+    subHeader: Dp
+) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -131,14 +128,10 @@ fun SearchHeader() {
             fontSize = 32.sp,
         )
     }
-}
-
-@Composable
-fun SearchSubheader(height: Dp) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
-            .height(height)
+            .height(subHeader)
             .fillMaxWidth()
             .background(color = Color.Gray),
     ) {
