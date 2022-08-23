@@ -57,7 +57,7 @@ fun SearchScreen(
         },
         bottomSheetState = searchScreenContent.searchScreenState.bottomSheetState,
         header = { SearchHeader(it) },
-        collapsibleHeaderDelta = SubheaderHeightDp,
+        headerCollapseDeltaDp = SubheaderHeightDp,
         fab = {
             SearchFab(
                 searchFabState = searchScreenContent.searchScreenState.searchFabState,

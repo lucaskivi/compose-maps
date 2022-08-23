@@ -46,6 +46,7 @@ import kotlin.math.roundToInt
  * * bug: If you catch the sheet while it is animating the bottom sheet catches the click and you cannot scroll the list
  * * bug: configuration change fab is absolutely fucked
  * * bug: fling from fuller to full sometimes leaves the list in a weird state
+ * * task: Remove bottomSheetHeaderDp from MultistageBottomSheet parameters?
  */
 
 
@@ -58,7 +59,7 @@ sealed class MultistageBottomSheetState : Parcelable {
      *
      *  The [LazyColumn] is the size of the parent composable. Therefore the full bottom sheet must be larger than the
      *  parent. The additional height comes from the draggable bar which is of size [bottomSheetBarPx] and the
-     *  collapsible header delta which is of size [collapsibleSubheaderPx].
+     *  collapsible header delta which is of size [headerCollapseDeltaPx].
      *
      *  It is important to know that this height overflow is split between the bottom and top of the parent. Therefore,
      *  the [Gone] state must be offset by the size of the entire bottom sheet minus half of any other height bearing
@@ -66,16 +67,16 @@ sealed class MultistageBottomSheetState : Parcelable {
      */
     abstract fun calculateAdditionalOffset(
         bottomSheetBarPx: Float,
-        collapsibleSubheaderPx: Float,
+        headerCollapseDeltaPx: Float,
     ): Float
 
     fun toAnchor(
         maxHeightPx: Float,
         bottomSheetBarPx: Float,
-        collapsibleHeaderDeltaPx: Float,
+        headerCollapseDeltaPx: Float,
     ): Pair<Float, MultistageBottomSheetState> = this.getOffset(
         bottomSheetBarPx = bottomSheetBarPx,
-        collapsibleHeaderDeltaPx = collapsibleHeaderDeltaPx,
+        headerCollapseDeltaPx = headerCollapseDeltaPx,
         maxHeightPx = maxHeightPx,
     ) to this
 
@@ -84,11 +85,11 @@ sealed class MultistageBottomSheetState : Parcelable {
      */
     fun getOffset(
         bottomSheetBarPx: Float,
-        collapsibleHeaderDeltaPx: Float,
+        headerCollapseDeltaPx: Float,
         maxHeightPx: Float,
     ): Float = maxHeightPx * percentOffset + this.calculateAdditionalOffset(
         bottomSheetBarPx = bottomSheetBarPx,
-        collapsibleSubheaderPx = collapsibleHeaderDeltaPx,
+        headerCollapseDeltaPx = headerCollapseDeltaPx,
     )
 
     @Parcelize
@@ -97,8 +98,8 @@ sealed class MultistageBottomSheetState : Parcelable {
         override val percentOffset: Float get() = 0f
         override fun calculateAdditionalOffset(
             bottomSheetBarPx: Float,
-            collapsibleSubheaderPx: Float,
-        ): Float = -bottomSheetBarPx / 2f - collapsibleSubheaderPx / 2f
+            headerCollapseDeltaPx: Float,
+        ): Float = -bottomSheetBarPx / 2f - headerCollapseDeltaPx / 2f
     }
 
     @Parcelize
@@ -107,8 +108,8 @@ sealed class MultistageBottomSheetState : Parcelable {
         override val percentOffset: Float get() = 0f
         override fun calculateAdditionalOffset(
             bottomSheetBarPx: Float,
-            collapsibleSubheaderPx: Float,
-        ): Float = -bottomSheetBarPx / 2f + collapsibleSubheaderPx / 2f
+            headerCollapseDeltaPx: Float,
+        ): Float = -bottomSheetBarPx / 2f + headerCollapseDeltaPx / 2f
     }
 
     @Parcelize
@@ -117,8 +118,8 @@ sealed class MultistageBottomSheetState : Parcelable {
         override val percentOffset: Float get() = 1f
         override fun calculateAdditionalOffset(
             bottomSheetBarPx: Float,
-            collapsibleSubheaderPx: Float,
-        ): Float = -bottomSheetBarPx / 2f - collapsibleSubheaderPx / 2f
+            headerCollapseDeltaPx: Float,
+        ): Float = -bottomSheetBarPx / 2f - headerCollapseDeltaPx / 2f
     }
 
     @Parcelize
@@ -127,34 +128,34 @@ sealed class MultistageBottomSheetState : Parcelable {
         override val percentOffset: Float get() = .5f
         override fun calculateAdditionalOffset(
             bottomSheetBarPx: Float,
-            collapsibleSubheaderPx: Float,
+            headerCollapseDeltaPx: Float,
         ) = 0f
     }
 
     companion object {
         fun getAnchors(
             bottomSheetBarPx: Float,
-            collapsibleSubheaderPx: Float,
+            headerCollapseDeltaPx: Float,
             maxHeightPx: Float,
         ): Map<Float, MultistageBottomSheetState> = mapOf(
             Gone.toAnchor(
                 bottomSheetBarPx = bottomSheetBarPx,
-                collapsibleHeaderDeltaPx = collapsibleSubheaderPx,
+                headerCollapseDeltaPx = headerCollapseDeltaPx,
                 maxHeightPx = maxHeightPx,
             ),
             Half.toAnchor(
                 bottomSheetBarPx = bottomSheetBarPx,
-                collapsibleHeaderDeltaPx = collapsibleSubheaderPx,
+                headerCollapseDeltaPx = headerCollapseDeltaPx,
                 maxHeightPx = maxHeightPx,
             ),
             Full.toAnchor(
                 bottomSheetBarPx = bottomSheetBarPx,
-                collapsibleHeaderDeltaPx = collapsibleSubheaderPx,
+                headerCollapseDeltaPx = headerCollapseDeltaPx,
                 maxHeightPx = maxHeightPx,
             ),
             Fuller.toAnchor(
                 bottomSheetBarPx = bottomSheetBarPx,
-                collapsibleHeaderDeltaPx = collapsibleSubheaderPx,
+                headerCollapseDeltaPx = headerCollapseDeltaPx,
                 maxHeightPx = maxHeightPx,
             ),
         )
@@ -169,8 +170,8 @@ fun MultistageBottomSheet(
     dragToNewStateCallback: (MultistageBottomSheetState) -> Unit,
     scrollableBody: LazyListScope.() -> Unit,
     state: MultistageBottomSheetState,
-    collapsibleHeaderDeltaDp: Dp,
-    expandedHeightDp: Dp,
+    headerCollapseDeltaPx: Dp,
+    bodyHeightDp: Dp,
     onChangeExpansionPercentage: (Float) -> Unit,
 ) {
     // Setup remembered state
@@ -185,10 +186,10 @@ fun MultistageBottomSheet(
     }
 
     // Setup required values
-    val bottomSheetMaxHeightDp = expandedHeightDp + bottomSheetHeaderHeightDp + collapsibleHeaderDeltaDp
+    val bottomSheetMaxHeightDp = bodyHeightDp + bottomSheetHeaderHeightDp + headerCollapseDeltaPx
     val fullOffset = MultistageBottomSheetState.Full.getOffset(
         bottomSheetBarPx = bottomSheetHeaderHeightDp.toPx(),
-        collapsibleHeaderDeltaPx = collapsibleHeaderDeltaDp.toPx(),
+        headerCollapseDeltaPx = headerCollapseDeltaPx.toPx(),
         maxHeightPx = bottomSheetMaxHeightDp.toPx(),
     )
 
@@ -199,7 +200,7 @@ fun MultistageBottomSheet(
 
     // Setup callbacks
     OverscrollCallback(
-        collapsibleHeaderDeltaDp = collapsibleHeaderDeltaDp,
+        headerCollapseDeltaPx = headerCollapseDeltaPx,
         fullOffset = fullOffset,
         swipeableState = swipeableState,
     ) { overscrollDp ->
@@ -226,7 +227,7 @@ fun MultistageBottomSheet(
                 orientation = Orientation.Vertical,
                 anchors = MultistageBottomSheetState.getAnchors(
                     bottomSheetBarPx = bottomSheetHeaderHeightDp.toPx(),
-                    collapsibleSubheaderPx = collapsibleHeaderDeltaDp.toPx(),
+                    headerCollapseDeltaPx = headerCollapseDeltaPx.toPx(),
                     maxHeightPx = bottomSheetMaxHeightDp.toPx(),
                 ),
             )
@@ -238,7 +239,7 @@ fun MultistageBottomSheet(
             modifier = Modifier
                 .border(1.dp, color = Color.Red)
                 .background(color = Color.White)
-                .requiredHeight(expandedHeightDp + collapsibleHeaderDeltaDp)
+                .requiredHeight(bodyHeightDp + headerCollapseDeltaPx)
         ) {
             scrollableBody.invoke(this)
         }
@@ -303,7 +304,7 @@ fun TargetStateChangeCallback(
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun OverscrollCallback(
-    collapsibleHeaderDeltaDp: Dp,
+    headerCollapseDeltaPx: Dp,
     fullOffset: Float,
     swipeableState: SwipeableState<MultistageBottomSheetState>,
     onOverscroll: (Float) -> Unit,
@@ -313,8 +314,8 @@ fun OverscrollCallback(
     LaunchedEffect(key1 = swipeableState, key2 = fullOffset) {
         snapshotFlow { swipeableState.offset.value }.collect {
             if (swipeableState.offset.value < fullOffset) {
-                val expansionDp = collapsibleHeaderDeltaDp - (fullOffset - swipeableState.offset.value).toDp(density)
-                onOverscroll(expansionDp / collapsibleHeaderDeltaDp)
+                val expansionDp = headerCollapseDeltaPx - (fullOffset - swipeableState.offset.value).toDp(density)
+                onOverscroll(expansionDp / headerCollapseDeltaPx)
             } else {
                 onOverscroll(1f)
             }
