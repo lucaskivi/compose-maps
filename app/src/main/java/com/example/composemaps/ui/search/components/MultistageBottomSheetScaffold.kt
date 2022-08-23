@@ -16,8 +16,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 
 @OptIn(ExperimentalMaterialApi::class)
@@ -28,7 +28,7 @@ fun MultistageBottomSheetScaffold(
     bottomSheetHeaderHeightDp: Dp,
     bottomSheetScrollableContent: LazyListScope.() -> Unit,
     bottomSheetState: MultistageBottomSheetState,
-    header: @Composable (Dp) -> Unit,
+    header: @Composable (Float) -> Unit,
     collapsibleHeaderDelta: Dp,
     fab: @Composable () -> Unit,
     fabPosition: FabPosition,
@@ -39,12 +39,8 @@ fun MultistageBottomSheetScaffold(
         floatingActionButtonPosition = fabPosition,
         modifier = Modifier.fillMaxSize()
     ) { paddingValues ->
-        val targetHeaderDelta = if (bottomSheetState.isCollapsibleSubheaderVisible) {
-            collapsibleHeaderDelta
-        } else {
-            0f.dp
-        }
-        val mutableHeaderDeltaDp = remember { mutableStateOf(targetHeaderDelta) }
+        val targetHeaderDelta = collapsibleHeaderDelta * bottomSheetState.expansionPercentage
+        val mutableHeaderExpansionPercentage = remember { mutableStateOf(targetHeaderDelta / collapsibleHeaderDelta) }
 
         Column(
             modifier = Modifier.padding(paddingValues),
@@ -53,11 +49,12 @@ fun MultistageBottomSheetScaffold(
             Column(
                 modifier = Modifier.zIndex(4f),
             ) {
-                header(mutableHeaderDeltaDp.value)
+                header(mutableHeaderExpansionPercentage.value)
                 Spacer(
                     Modifier
                         .fillMaxWidth()
-                        .height(collapsibleHeaderDelta - mutableHeaderDeltaDp.value)
+                        .alpha(0f)
+                        .height(collapsibleHeaderDelta * (1f - mutableHeaderExpansionPercentage.value))
                 )
             }
 
@@ -78,9 +75,7 @@ fun MultistageBottomSheetScaffold(
                     expandedHeightDp = maxHeightWithFullSubheader,
                     collapsibleHeaderDeltaDp = collapsibleHeaderDelta,
                     scrollableBody = bottomSheetScrollableContent,
-                ) { offsetY ->
-                    mutableHeaderDeltaDp.value = offsetY
-                }
+                ) { mutableHeaderExpansionPercentage.value = it }
             }
         }
     }

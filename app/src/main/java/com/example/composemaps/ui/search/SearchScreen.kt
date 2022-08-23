@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.FabPosition
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
@@ -20,6 +19,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.composemaps.R
@@ -37,7 +37,6 @@ import com.example.composemaps.ui.search.components.searchListItems
 private val SubheaderHeightDp = 56.dp
 private val BottomSheetBarHeightDp = 40.dp
 
-@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun SearchScreen(
     viewModel: SearchViewModel = hiltViewModel()
@@ -113,8 +112,14 @@ fun BottomSheetHeader(
 
 @Composable
 fun SearchHeader(
-    subHeader: Dp
+    exansionPercentage: Float,
 ) {
+    val actualSubheaderHeight = lerp(
+        start = 0.dp,
+        stop = SubheaderHeightDp,
+        fraction = exansionPercentage,
+    )
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -131,7 +136,7 @@ fun SearchHeader(
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
-            .height(subHeader)
+            .height(actualSubheaderHeight)
             .fillMaxWidth()
             .background(color = Color.Gray),
     ) {

@@ -45,11 +45,12 @@ import kotlin.math.roundToInt
  * Todo:
  * * bug: If you catch the sheet while it is animating the bottom sheet catches the click and you cannot scroll the list
  * * bug: configuration change fab is absolutely fucked
+ * * bug: fling from fuller to full sometimes leaves the list in a weird state
  */
 
 
 sealed class MultistageBottomSheetState : Parcelable {
-    abstract val isCollapsibleSubheaderVisible: Boolean
+    abstract val expansionPercentage: Float
     abstract val percentOffset: Float
 
     /**
@@ -92,7 +93,7 @@ sealed class MultistageBottomSheetState : Parcelable {
 
     @Parcelize
     object Fuller : MultistageBottomSheetState() {
-        override val isCollapsibleSubheaderVisible: Boolean get() = false
+        override val expansionPercentage: Float get() = 0f
         override val percentOffset: Float get() = 0f
         override fun calculateAdditionalOffset(
             bottomSheetBarPx: Float,
@@ -102,7 +103,7 @@ sealed class MultistageBottomSheetState : Parcelable {
 
     @Parcelize
     object Full : MultistageBottomSheetState() {
-        override val isCollapsibleSubheaderVisible: Boolean get() = true
+        override val expansionPercentage: Float get() = 1f
         override val percentOffset: Float get() = 0f
         override fun calculateAdditionalOffset(
             bottomSheetBarPx: Float,
@@ -112,7 +113,7 @@ sealed class MultistageBottomSheetState : Parcelable {
 
     @Parcelize
     object Gone : MultistageBottomSheetState() {
-        override val isCollapsibleSubheaderVisible: Boolean get() = true
+        override val expansionPercentage: Float get() = 1f
         override val percentOffset: Float get() = 1f
         override fun calculateAdditionalOffset(
             bottomSheetBarPx: Float,
@@ -122,7 +123,7 @@ sealed class MultistageBottomSheetState : Parcelable {
 
     @Parcelize
     object Half : MultistageBottomSheetState() {
-        override val isCollapsibleSubheaderVisible: Boolean get() = true
+        override val expansionPercentage: Float get() = 1f
         override val percentOffset: Float get() = .5f
         override fun calculateAdditionalOffset(
             bottomSheetBarPx: Float,
@@ -170,7 +171,7 @@ fun MultistageBottomSheet(
     state: MultistageBottomSheetState,
     collapsibleHeaderDeltaDp: Dp,
     expandedHeightDp: Dp,
-    onScrollPastFull: (Dp) -> Unit,
+    onChangeExpansionPercentage: (Float) -> Unit,
 ) {
     // Setup remembered state
     val swipeableState = rememberSwipeableState(initialValue = state)
@@ -202,7 +203,7 @@ fun MultistageBottomSheet(
         fullOffset = fullOffset,
         swipeableState = swipeableState,
     ) { overscrollDp ->
-        onScrollPastFull(overscrollDp)
+        onChangeExpansionPercentage(overscrollDp)
     }
     TargetStateChangeCallback(
         interactionSource = bottomListInteractionSource,
@@ -293,7 +294,7 @@ fun TargetStateChangeCallback(
 ) {
     val isBottomSheetDragged by interactionSource.collectIsDraggedAsState()
     val isLazyListDragged by lazyListInteractionSource.collectIsDraggedAsState()
-    
+
     if (isBottomSheetDragged.not() && isLazyListDragged.not()) {
         callback(swipeableState.targetValue)
     }
@@ -305,16 +306,17 @@ fun OverscrollCallback(
     collapsibleHeaderDeltaDp: Dp,
     fullOffset: Float,
     swipeableState: SwipeableState<MultistageBottomSheetState>,
-    onOverscroll: (Dp) -> Unit,
+    onOverscroll: (Float) -> Unit,
 ) {
     val density = LocalDensity.current
 
     LaunchedEffect(key1 = swipeableState, key2 = fullOffset) {
         snapshotFlow { swipeableState.offset.value }.collect {
             if (swipeableState.offset.value < fullOffset) {
-                onOverscroll(collapsibleHeaderDeltaDp - (fullOffset + -swipeableState.offset.value).toDp(density))
+                val expansionDp = collapsibleHeaderDeltaDp - (fullOffset - swipeableState.offset.value).toDp(density)
+                onOverscroll(expansionDp / collapsibleHeaderDeltaDp)
             } else {
-                onOverscroll(collapsibleHeaderDeltaDp)
+                onOverscroll(1f)
             }
         }
     }
