@@ -2,7 +2,6 @@ package com.example.composemaps.ui.search.components
 
 import android.os.Parcelable
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -50,7 +49,6 @@ import kotlin.math.roundToInt
  * * bug: fling from fuller to full sometimes leaves the list in a weird state
  * * task: Remove bottomSheetHeaderDp from MultistageBottomSheet parameters?
  */
-
 
 sealed class MultistageBottomSheetState : Parcelable {
     abstract val expansionPercentage: Float
@@ -139,7 +137,8 @@ sealed class MultistageBottomSheetState : Parcelable {
             bottomSheetBarPx: Float,
             headerCollapseDeltaPx: Float,
             maxHeightPx: Float,
-        ): Map<Float, MultistageBottomSheetState> = mapOf(
+            isCollapsible: Boolean,
+        ): Map<Float, MultistageBottomSheetState> = listOfNotNull(
             Gone.toAnchor(
                 bottomSheetBarPx = bottomSheetBarPx,
                 headerCollapseDeltaPx = headerCollapseDeltaPx,
@@ -159,9 +158,22 @@ sealed class MultistageBottomSheetState : Parcelable {
                 bottomSheetBarPx = bottomSheetBarPx,
                 headerCollapseDeltaPx = headerCollapseDeltaPx,
                 maxHeightPx = maxHeightPx,
-            ),
-        )
+            ).takeIf { isCollapsible },
+        ).toMap()
     }
+}
+
+sealed class MultistageBottomSheetHeaderState {
+    abstract val heightDeltaDp: Dp
+
+    object Static: MultistageBottomSheetHeaderState() {
+        override val heightDeltaDp: Dp get() = 0.dp
+    }
+
+    data class Collapsible(
+        override val heightDeltaDp: Dp,
+        val onChangeExpansionPercentage: (Float) -> Unit,
+    ) : MultistageBottomSheetHeaderState()
 }
 
 @ExperimentalMaterialApi
@@ -170,11 +182,10 @@ fun MultistageBottomSheet(
     bottomSheetHeader: @Composable () -> Unit,
     bottomSheetHeaderHeightDp: Dp,
     dragToNewStateCallback: (MultistageBottomSheetState) -> Unit,
+    headerState: MultistageBottomSheetHeaderState,
     scrollableBody: LazyListScope.() -> Unit,
     state: MultistageBottomSheetState,
-    headerCollapseDeltaPx: Dp,
     bodyHeightDp: Dp,
-    onChangeExpansionPercentage: (Float) -> Unit,
 ) {
     // Setup remembered state
     val swipeableState = rememberSwipeableState(initialValue = state)
@@ -188,12 +199,7 @@ fun MultistageBottomSheet(
     }
 
     // Setup required values
-    val bottomSheetMaxHeightDp = bodyHeightDp + bottomSheetHeaderHeightDp + headerCollapseDeltaPx
-    val fullOffset = MultistageBottomSheetState.Full.getOffset(
-        bottomSheetBarPx = bottomSheetHeaderHeightDp.toPx(),
-        headerCollapseDeltaPx = headerCollapseDeltaPx.toPx(),
-        maxHeightPx = bottomSheetMaxHeightDp.toPx(),
-    )
+    val bottomSheetMaxHeightDp = bodyHeightDp + bottomSheetHeaderHeightDp + headerState.heightDeltaDp
 
     // Setup animation on state change
     LaunchedEffect(key1 = state) {
@@ -201,12 +207,19 @@ fun MultistageBottomSheet(
     }
 
     // Setup callbacks
-    OverscrollCallback(
-        headerCollapseDeltaPx = headerCollapseDeltaPx,
-        fullOffset = fullOffset,
-        swipeableState = swipeableState,
-    ) { overscrollDp ->
-        onChangeExpansionPercentage(overscrollDp)
+    if (headerState is MultistageBottomSheetHeaderState.Collapsible) {
+        val fullOffset = MultistageBottomSheetState.Full.getOffset(
+            bottomSheetBarPx = bottomSheetHeaderHeightDp.toPx(),
+            headerCollapseDeltaPx = headerState.heightDeltaDp.toPx(),
+            maxHeightPx = bottomSheetMaxHeightDp.toPx(),
+        )
+        OverscrollCallback(
+            headerCollapseDeltaPx = headerState.heightDeltaDp,
+            fullOffset = fullOffset,
+            swipeableState = swipeableState,
+        ) { overscrollDp ->
+            headerState.onChangeExpansionPercentage(overscrollDp)
+        }
     }
     TargetStateChangeCallback(
         interactionSource = bottomListInteractionSource,
@@ -229,8 +242,9 @@ fun MultistageBottomSheet(
                 orientation = Orientation.Vertical,
                 anchors = MultistageBottomSheetState.getAnchors(
                     bottomSheetBarPx = bottomSheetHeaderHeightDp.toPx(),
-                    headerCollapseDeltaPx = headerCollapseDeltaPx.toPx(),
+                    headerCollapseDeltaPx = headerState.heightDeltaDp.toPx(),
                     maxHeightPx = bottomSheetMaxHeightDp.toPx(),
+                    isCollapsible = headerState is MultistageBottomSheetHeaderState.Collapsible,
                 ),
             )
             .nestedScroll(nestedScrollConnection)
@@ -240,7 +254,7 @@ fun MultistageBottomSheet(
             state = lazyListState,
             modifier = Modifier
                 .background(color = Color.White)
-                .requiredHeight(bodyHeightDp + headerCollapseDeltaPx)
+                .requiredHeight(bodyHeightDp + headerState.heightDeltaDp)
         ) {
             scrollableBody.invoke(this)
         }

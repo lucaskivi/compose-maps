@@ -12,13 +12,31 @@ import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.FabPosition
 import androidx.compose.material.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+
+sealed class ScaffoldHeaderState {
+
+    abstract val heightDeltaDp: Dp
+
+    data class Static(
+        val content: @Composable () -> Unit,
+    ) : ScaffoldHeaderState() {
+        override val heightDeltaDp: Dp get() = 0.dp
+    }
+
+    data class Collapsible(
+        val content: @Composable (Float) -> Unit,
+        override val heightDeltaDp: Dp,
+    ) : ScaffoldHeaderState()
+}
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -28,8 +46,7 @@ fun MultistageBottomSheetScaffold(
     bottomSheetHeaderHeightDp: Dp,
     bottomSheetScrollableContent: LazyListScope.() -> Unit,
     bottomSheetState: MultistageBottomSheetState,
-    header: @Composable (Float) -> Unit,
-    headerCollapseDeltaDp: Dp,
+    headerState: ScaffoldHeaderState,
     fab: @Composable () -> Unit,
     fabPosition: FabPosition,
     content: @Composable () -> Unit,
@@ -39,8 +56,34 @@ fun MultistageBottomSheetScaffold(
         floatingActionButtonPosition = fabPosition,
         modifier = Modifier.fillMaxSize()
     ) { paddingValues ->
-        val targetHeaderDelta = headerCollapseDeltaDp * bottomSheetState.expansionPercentage
-        val mutableHeaderExpansionPercentage = remember { mutableStateOf(targetHeaderDelta / headerCollapseDeltaDp) }
+        val targetHeaderDeltaDp = headerState.heightDeltaDp * bottomSheetState.expansionPercentage
+
+        val mutableHeaderExpansionPercentage: MutableState<Float>?
+        val bottomSheetHeaderState: MultistageBottomSheetHeaderState
+        val header: @Composable () -> Unit
+        when (headerState) {
+            is ScaffoldHeaderState.Static -> {
+                mutableHeaderExpansionPercentage = null
+                bottomSheetHeaderState = MultistageBottomSheetHeaderState.Static
+                header = { headerState.content() }
+            }
+            is ScaffoldHeaderState.Collapsible -> {
+                mutableHeaderExpansionPercentage = remember { mutableStateOf(targetHeaderDeltaDp / headerState.heightDeltaDp) }
+                bottomSheetHeaderState = MultistageBottomSheetHeaderState.Collapsible(
+                    heightDeltaDp = headerState.heightDeltaDp,
+                    onChangeExpansionPercentage = { mutableHeaderExpansionPercentage.value = it }
+                )
+                header = {
+                    headerState.content(mutableHeaderExpansionPercentage.value)
+                    Spacer(
+                        Modifier
+                            .fillMaxWidth()
+                            .alpha(0f)
+                            .height(headerState.heightDeltaDp * (1f - mutableHeaderExpansionPercentage.value))
+                    )
+                }
+            }
+        }
 
         Column(
             modifier = Modifier.padding(paddingValues),
@@ -49,13 +92,7 @@ fun MultistageBottomSheetScaffold(
             Column(
                 modifier = Modifier.zIndex(4f),
             ) {
-                header(mutableHeaderExpansionPercentage.value)
-                Spacer(
-                    Modifier
-                        .fillMaxWidth()
-                        .alpha(0f)
-                        .height(headerCollapseDeltaDp * (1f - mutableHeaderExpansionPercentage.value))
-                )
+                header()
             }
 
             BoxWithConstraints(
@@ -64,18 +101,18 @@ fun MultistageBottomSheetScaffold(
             ) {
                 val currentMaxHeightDp = this@BoxWithConstraints.maxHeight
                 val maxHeightWithFullHeader = remember {
-                    currentMaxHeightDp + headerCollapseDeltaDp - targetHeaderDelta
+                    currentMaxHeightDp + headerState.heightDeltaDp - targetHeaderDeltaDp
                 }
                 content()
                 MultistageBottomSheet(
                     bottomSheetHeader = bottomSheetHeader,
                     bottomSheetHeaderHeightDp = bottomSheetHeaderHeightDp,
-                    state = bottomSheetState,
+                    headerState = bottomSheetHeaderState,
                     dragToNewStateCallback = bottomSheetDraggedToNewStateCallback,
                     bodyHeightDp = maxHeightWithFullHeader,
-                    headerCollapseDeltaPx = headerCollapseDeltaDp,
                     scrollableBody = bottomSheetScrollableContent,
-                ) { mutableHeaderExpansionPercentage.value = it }
+                    state = bottomSheetState,
+                )
             }
         }
     }

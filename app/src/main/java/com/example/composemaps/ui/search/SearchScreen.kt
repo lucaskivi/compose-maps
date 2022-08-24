@@ -26,6 +26,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.composemaps.R
 import com.example.composemaps.ui.search.components.MultistageBottomSheetScaffold
 import com.example.composemaps.ui.search.components.MultistageBottomSheetState
+import com.example.composemaps.ui.search.components.ScaffoldHeaderState
 import com.example.composemaps.ui.search.components.SearchFab
 import com.example.composemaps.ui.search.components.SearchFabState
 import com.example.composemaps.ui.search.components.SearchListContent
@@ -59,7 +60,8 @@ fun SearchScreen(
     viewModel: SearchViewModel = hiltViewModel()
 ) {
     val searchScreenContent by viewModel.searchScreenContent.collectAsState(initial = SearchScreenContent.DEFAULT)
-    val totalHeaderDeltaDp = SubheaderBottomPaddingDelta + SubheaderLineHeightDeltaSp.toDp() + HeaderLineHeightDeltaSp.toDp()
+    val totalHeaderDeltaDp =
+        SubheaderBottomPaddingDelta + SubheaderLineHeightDeltaSp.toDp() + HeaderLineHeightDeltaSp.toDp()
 
     MultistageBottomSheetScaffold(
         bottomSheetDraggedToNewStateCallback = viewModel::onDragToNewState,
@@ -74,8 +76,14 @@ fun SearchScreen(
             )
         },
         bottomSheetState = searchScreenContent.searchScreenState.bottomSheetState,
-        header = { SearchHeader(it) },
-        headerCollapseDeltaDp = totalHeaderDeltaDp,
+        headerState = ScaffoldHeaderState.Collapsible(
+            content = {
+                SearchHeader(
+                    expansionPercentage = it,
+                )
+            },
+            heightDeltaDp = totalHeaderDeltaDp,
+        ),
         fab = {
             SearchFab(
                 searchFabState = searchScreenContent.searchScreenState.searchFabState,

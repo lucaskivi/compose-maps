@@ -38,10 +38,8 @@ class SearchViewModel @Inject constructor(
 
     fun fabClicked() {
         mutableSearchScreenState.value = when (val current = mutableSearchScreenState.value) {
-            is SearchScreenState.FullerList -> current.convertToHalfMap()
-            is SearchScreenState.FullMap -> current.convertToHalfMap()
             is SearchScreenState.HalfMap -> throw FAB_EXCEPTION
-            SearchScreenState.FullList -> current.convertToHalfMap()
+            else -> current.convertToHalfMap()
         }
     }
 
